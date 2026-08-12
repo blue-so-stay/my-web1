@@ -613,7 +613,7 @@
 
     <script>
         // ========================================================
-        // 이미지에서 확인한 Firebase 설정 적용
+        // Firebase 설정
         // ========================================================
         const firebaseConfig = {
             apiKey: "AIzaSyBbCUM1H7nnIML5vd3Pxiogv6_gENiABU",
@@ -634,7 +634,7 @@
 
         window.onload = function() {
             updateAuthUI();
-            listenToPosts(); // Firestore 실시간 수신 시작
+            listenToPosts();
         };
 
         function filterSpots(e, category) {
@@ -714,8 +714,15 @@
             });
         }
 
-        // 게시글 업로드 및 수정
+        // 게시글 업로드 및 수정 (로그인 필수 체크 추가)
         function submitPost() {
+            // [로그인 필수 제약 조건 추가]
+            if (!currentUser) {
+                alert('로그인 후 이용 가능합니다.');
+                openModal('loginModal');
+                return;
+            }
+
             const text = document.getElementById('postText').value;
             const fileInput = document.getElementById('postImage');
             const editId = document.getElementById('editPostId').value;
@@ -744,7 +751,7 @@
                     .catch(err => alert("수정 실패: " + err));
             } else {
                 const newPost = {
-                    author: currentUser || '여행자',
+                    author: currentUser,
                     date: new Date().toLocaleDateString(),
                     text: text,
                     image: imageBase64 || '',
@@ -769,8 +776,21 @@
         }
 
         function editPost(id) {
+            if (!currentUser) {
+                alert('로그인 후 이용 가능합니다.');
+                openModal('loginModal');
+                return;
+            }
+
             const post = postsData.find(p => p.id === id);
             if (!post) return;
+
+            // 본인이 쓴 글만 수정할 수 있게 제약
+            if (post.author !== currentUser) {
+                alert('본인이 작성한 글만 수정할 수 있습니다.');
+                return;
+            }
+
             document.getElementById('editPostId').value = post.id;
             document.getElementById('postText').value = post.text;
             document.getElementById('uploadTitle').innerText = '✏️ 게시글 수정하기';
@@ -780,6 +800,21 @@
         }
 
         function deletePost(id) {
+            if (!currentUser) {
+                alert('로그인 후 이용 가능합니다.');
+                openModal('loginModal');
+                return;
+            }
+
+            const post = postsData.find(p => p.id === id);
+            if (!post) return;
+
+            // 본인이 쓴 글만 삭제할 수 있게 제약
+            if (post.author !== currentUser) {
+                alert('본인이 작성한 글만 삭제할 수 있습니다.');
+                return;
+            }
+
             if (confirm('게시글을 삭제하시겠습니까?')) {
                 db.collection("posts").doc(id).delete()
                     .catch(err => alert("삭제 실패: " + err));
@@ -799,8 +834,14 @@
             });
         }
 
-        // 댓글 추가
+        // 댓글 추가 (로그인 필수 체크 추가)
         function addComment(postId) {
+            if (!currentUser) {
+                alert('로그인 후 댓글을 남기실 수 있습니다.');
+                openModal('loginModal');
+                return;
+            }
+
             const input = document.getElementById(`comment-input-${postId}`);
             if(!input.value) return;
 
@@ -810,7 +851,7 @@
             const updatedComments = post.comments || [];
             updatedComments.push({
                 id: Date.now(),
-                author: currentUser || '익명',
+                author: currentUser,
                 text: input.value,
                 blocked: false
             });
